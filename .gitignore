@@ -133,4 +133,5 @@ dmypy.json
 *.h5
 *.pickle
 *.pth
+.vscode/
 
