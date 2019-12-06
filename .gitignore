@@ -128,3 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# My configurations
+*.pkl
+*.h5
+*.pickle
+*.path
+
