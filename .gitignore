@@ -134,4 +134,6 @@ dmypy.json
 *.pickle
 *.pth
 .vscode/
-
+results/
+logs/
+visuals/

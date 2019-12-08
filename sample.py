@@ -9,7 +9,8 @@ from caption import Vocabulary
 from model import BiLSTM
 from args import video_root, video_sort_lambda
 from args import vocab_pkl_path, feature_h5_path, feature_h5_feats
-from args import best_banet_pth_path
+#from args import best_banet_pth_path
+from args import best_meteor_pth_path
 from args import feature_size, max_frames, max_words
 from args import projected_size, hidden_size, word_size
 from args import use_cuda
@@ -76,7 +77,8 @@ if __name__ == '__main__':
     # 载入预训练模型
     bi_lstm = BiLSTM(feature_size, projected_size, hidden_size, word_size,
                      max_frames, max_words, vocab)
-    bi_lstm.load_state_dict(torch.load(best_banet_pth_path))
+    #bi_lstm.load_state_dict(torch.load(best_banet_pth_path))
+    bi_lstm.load_state_dict(torch.load(best_meteor_pth_path))
     bi_lstm.cuda()
     bi_lstm.eval()
 
