@@ -31,7 +31,7 @@ log_environment = os.path.join('logs', env_tag)  # tensorboard的记录环境
 projected_size = 1000
 word_size = 300  # word embedding size
 hidden_size = 1024  # 循环网络的隐层单元数目
-beam_size = 1
+beam_size = 5
 
 frame_shape = (3, 299, 299)  # 视频帧的形状
 a_feature_size = 1536  # 表观特征的大小
