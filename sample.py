@@ -11,8 +11,6 @@ import pickle
 import torch
 import h5py
 import numpy as np
-
-sys.path.append("..")
 from options import args
 from utils import Vocabulary
 from model import BiLSTM
