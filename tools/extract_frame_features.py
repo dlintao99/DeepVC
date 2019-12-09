@@ -9,17 +9,17 @@ import h5py
 import numpy as np
 import skimage
 import torch
+import sys
 from torch import Tensor
 from torch.autograd import Variable
 import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
 from IncepResv2 import InceptionResNetV2
-from args import frame_shape
-from args import video_root, video_sort_lambda
-from args import feature_h5_path, feature_h5_feats, feature_h5_lens
-from args import resnet_checkpoint, c3d_checkpoint, IRV2_checkpoint
-from args import max_frames, feature_size
+
+sys.path.append("..")
+from options import args
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -47,7 +47,7 @@ class AppearanceEncoder_inceptionresnetv2(nn.Module):
         super(AppearanceEncoder_inceptionresnetv2, self).__init__()
         IRV2 = InceptionResNetV2(num_classes=1001)
         # print('IRV2:\n', IRV2)
-        IRV2.load_state_dict(torch.load(IRV2_checkpoint))
+        IRV2.load_state_dict(torch.load(args.IRV2_checkpoint))
         modules = list(IRV2.children())[:-1]  # delete the last fc layer.
         self.IRV2 = nn.Sequential(*modules)
         # print('IRV2:\n', self.IRV2)
@@ -66,7 +66,7 @@ class AppearanceEncoder_resnet50(nn.Module):
     def __init__(self):
         super(AppearanceEncoder_resnet50, self).__init__()
         self.resnet = models.resnet50()
-        self.resnet.load_state_dict(torch.load(resnet_checkpoint))
+        self.resnet.load_state_dict(torch.load(args.resnet_checkpoint))
         del self.resnet.fc
 
     def forward(self, x):
@@ -160,7 +160,7 @@ class MotionEncoder(nn.Module):
     def __init__(self):
         super(MotionEncoder, self).__init__()
         self.c3d = C3D()
-        pretrained_dict = torch.load(c3d_checkpoint)
+        pretrained_dict = torch.load(args.c3d_checkpoint)
         model_dict = self.c3d.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(pretrained_dict)
@@ -192,7 +192,7 @@ def sample_frames(video_path, train=True):
         frames.append(frame)
         frame_count += 1
 
-    indices = np.linspace(8, frame_count - 7, max_frames, endpoint=False, dtype=int)
+    indices = np.linspace(8, frame_count - 7, args.max_frames, endpoint=False, dtype=int)
 
     frames = np.array(frames)
     frame_list = frames[indices]
@@ -241,33 +241,33 @@ def preprocess_frame(image, target_height=224, target_width=224):
 
 def extract_features(aencoder, mencoder,device):
     # 读取视频列表，让视频按照id升序排列
-    videos = sorted(os.listdir(video_root), key=video_sort_lambda)
+    videos = sorted(os.listdir(args.video_root), key=args.video_sort_lambda)
     nvideos = len(videos)
 
     # 创建保存视频特征的hdf5文件
     feature_size = 1536
-    if os.path.exists(feature_h5_path):
+    if os.path.exists(args.feature_h5_path):
         # 如果hdf5文件已经存在，说明之前处理过，或许是没有完全处理完
         # 使用r+ (read and write)模式读取，以免覆盖掉之前保存好的数据
-        h5 = h5py.File(feature_h5_path, 'r+')
-        dataset_feats = h5[feature_h5_feats]
-        dataset_lens = h5[feature_h5_lens]
+        h5 = h5py.File(args.feature_h5_path, 'r+')
+        dataset_feats = h5[args.feature_h5_feats]
+        dataset_lens = h5[args.feature_h5_lens]
     else:
-        h5 = h5py.File(feature_h5_path, 'w')
-        dataset_feats = h5.create_dataset(feature_h5_feats,
-                                          (nvideos, max_frames, feature_size),
+        h5 = h5py.File(args.feature_h5_path, 'w')
+        dataset_feats = h5.create_dataset(args.feature_h5_feats,
+                                          (nvideos, args.max_frames, feature_size),
                                           dtype='float32')
-        dataset_lens = h5.create_dataset(feature_h5_lens, (nvideos,), dtype='int')
+        dataset_lens = h5.create_dataset(args.feature_h5_lens, (nvideos,), dtype='int')
 
     for i, video in enumerate(videos):
         print(video, end=' ')
-        video_path = os.path.join(video_root, video)
+        video_path = os.path.join(args.video_root, video)
         # 提取视频帧以及视频小块
         frame_list, clip_list, frame_count = sample_frames(video_path, train=True)
         print(frame_count)
 
         # 把图像做一下处理，然后转换成（batch, channel, height, width）的格式
-        frame_list = np.array([preprocess_frame(x, frame_shape[1], frame_shape[2]) for x in frame_list])
+        frame_list = np.array([preprocess_frame(x, args.frame_shape[1], args.frame_shape[2]) for x in frame_list])
         frame_list = frame_list.transpose((0, 3, 1, 2))
         # 先提取表观特征
         with torch.no_grad():

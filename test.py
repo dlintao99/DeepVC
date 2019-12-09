@@ -1,6 +1,7 @@
-from args import test_prediction_txt_path, test_reference_txt_path
+from options import args
+
 # file = test_reference_txt_path
-file = test_prediction_txt_path
+file = args.test_prediction_txt_path
 with open(file, 'r') as f:
     lines = f.readlines()
     sents = []

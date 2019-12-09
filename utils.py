@@ -6,19 +6,49 @@ import sys
 import json
 import hashlib
 import pandas as pd
-from args import msvd_csv_path, msvd_anno_json_path, msvd_video_name2id_map
-from args import msrvtt_anno_trainval_path, msrvtt_anno_test_path, msrvtt_anno_json_path
-
+from options import args
 
 # 关闭屏幕输出
 def blockPrint():
     sys.stdout = open(os.devnull, 'w')
 
-
 # 恢复屏幕输出
 def enablePrint():
     sys.stdout = sys.__stdout__
 
+class Vocabulary(object):
+
+    def __init__(self):
+        self.word2idx = {}
+        self.idx2word = []
+        self.nwords = 0
+        self.add_word('<pad>')
+        self.add_word('<start>')
+        self.add_word('<end>')
+        self.add_word('<unk>')
+
+    def add_word(self, w):
+        '''
+        将新单词加入词汇表中
+        '''
+        if w not in self.word2idx:
+            self.word2idx[w] = self.nwords
+            self.idx2word.append(w)
+            self.nwords += 1
+
+    def __call__(self, w):
+        '''
+        返回单词对应的id
+        '''
+        if w not in self.word2idx:
+            return self.word2idx['<unk>']
+        return self.word2idx[w]
+
+    def __len__(self):
+        '''
+        得到词汇表中词汇的数量
+        '''
+        return self.nwords
 
 class CocoAnnotations:
 
@@ -152,7 +182,7 @@ def build_msvd_annotation():
     之所以要和MSR-VTT的格式相似，是因为所有的数据集要共用一套prepare_captions的代码
     '''
     # 首先根据MSVD数据集官方提供的CSV文件确定每段视频的名字
-    video_data = pd.read_csv(msvd_csv_path, sep=',', encoding='utf8')
+    video_data = pd.read_csv(args.msvd_csv_path, sep=',', encoding='utf8')
     video_data = video_data[video_data['Language'] == 'English']
     # 只使用clean的描述
     # 不行，有的视频没有clean的描述
@@ -162,7 +192,7 @@ def build_msvd_annotation():
                                                str(row['End']), axis=1)
     # 然后根据youtubeclips整理者提供的视频名字到视频id的映射构建一个词典
     video_name2id = {}
-    with open(msvd_video_name2id_map, 'r') as f:
+    with open(args.msvd_video_name2id_map, 'r') as f:
         lines = f.readlines()
         for line in lines:
             name, vid = line.strip().split()
@@ -204,18 +234,18 @@ def build_msvd_annotation():
         sents_anno.append(d)
 
     anno = {'sentences': sents_anno}
-    with open(msvd_anno_json_path, 'w') as f:
+    with open(args.msvd_anno_json_path, 'w') as f:
         json.dump(anno, f)
 
 def build_msrvtt_annotation():
-    with open(msrvtt_anno_trainval_path, 'r') as f:
+    with open(args.msrvtt_anno_trainval_path, 'r') as f:
         trainval_anno = json.load(f)
-    with open(msrvtt_anno_test_path, 'r') as f:
+    with open(args.msrvtt_anno_test_path, 'r') as f:
         test_anno = json.load(f)
 
     sents_anno = trainval_anno['sentences'] + test_anno['sentences']
     anno = {'sentences': sents_anno}
-    with open(msrvtt_anno_json_path, 'w') as f:
+    with open(args.msrvtt_anno_json_path, 'w') as f:
         json.dump(anno, f)
 
 

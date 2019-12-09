@@ -4,9 +4,7 @@ import pickle
 import h5py
 import torch
 import torch.utils.data as data
-from args import train_caption_pkl_path
-from args import feature_h5_path, feature_h5_feats
-
+from options import args
 
 class V2TDataset(data.Dataset):
     '''
@@ -22,7 +20,7 @@ class V2TDataset(data.Dataset):
         with open(cap_pkl, 'rb') as f:
             self.captions, self.lengths, self.video_ids = pickle.load(f)
         h5_file = h5py.File(feature_h5, 'r')
-        self.video_feats = h5_file[feature_h5_feats]
+        self.video_feats = h5_file[args.feature_h5_feats]
 
     def __getitem__(self, index):
         '''
@@ -47,7 +45,7 @@ class VideoDataset(data.Dataset):
     def __init__(self, eval_range, feature_h5):
         self.eval_list = tuple(range(*eval_range))
         h5_file = h5py.File(feature_h5, 'r')
-        self.video_feats = h5_file[feature_h5_feats]
+        self.video_feats = h5_file[args.feature_h5_feats]
 
     def __getitem__(self, index):
         '''
@@ -115,7 +113,7 @@ def get_eval_loader(cap_pkl, feature_h5, batch_size=100, shuffle=False, num_work
 
 
 if __name__ == '__main__':
-    train_loader = get_train_loader(train_caption_pkl_path, feature_h5_path)
+    train_loader = get_train_loader(args.train_caption_pkl_path, args.feature_h5_path)
     print(len(train_loader))
     d = next(iter(train_loader))
     print(d[0])
