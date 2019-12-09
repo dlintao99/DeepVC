@@ -5,16 +5,6 @@
 '''
 
 import cv2
-from caption import Vocabulary
-from model import BiLSTM
-from args import video_root, video_sort_lambda
-from args import vocab_pkl_path, feature_h5_path, feature_h5_feats
-#from args import best_banet_pth_path
-from args import best_meteor_pth_path
-from args import feature_size, max_frames, max_words
-from args import projected_size, hidden_size, word_size
-from args import use_cuda
-from args import visual_dir
 import os
 import sys
 import pickle
@@ -22,6 +12,10 @@ import torch
 import h5py
 import numpy as np
 
+sys.path.append("..")
+from options import args
+from utils import Vocabulary
+from model import BiLSTM
 
 def open_video(video_path):
     try:
@@ -40,19 +34,19 @@ def open_video(video_path):
         # cv2.waitKey(30)
         frame_list.append(frame)
         frame_count += 1
-    indices = np.linspace(0, frame_count, max_frames, endpoint=False, dtype=int)
+    indices = np.linspace(0, frame_count, args.max_frames, endpoint=False, dtype=int)
     frame_list = np.array(frame_list)[indices]
     return frame_list
 
 
 def sample(vocab, video_feat, bi_lstm, video_path, vid):
     # 为每个视频建立保存可视化结果的目录
-    img_dir = os.path.join(visual_dir, str(vid))
+    img_dir = os.path.join(args.visual_dir, str(vid))
     if not os.path.exists(img_dir):
         os.mkdir(img_dir)
 
     # frame_list = open_video(video_path)
-    if use_cuda:
+    if args.use_cuda:
         video_feat = video_feat.cuda()
     video_feat = video_feat.unsqueeze(0)
     outputs = bi_lstm(video_feat, None)
@@ -69,24 +63,29 @@ def sample(vocab, video_feat, bi_lstm, video_path, vid):
 
 
 if __name__ == '__main__':
-    with open(vocab_pkl_path, 'rb') as f:
+    with open(args.vocab_pkl_path, 'rb') as f:
         vocab = pickle.load(f)
 
-    features = h5py.File(feature_h5_path, 'r')[feature_h5_feats]
+    features = h5py.File(args.feature_h5_path, 'r')[args.feature_h5_feats]
 
     # 载入预训练模型
-    bi_lstm = BiLSTM(feature_size, projected_size, hidden_size, word_size,
-                     max_frames, max_words, vocab)
+    bi_lstm = BiLSTM(args.feature_size, 
+                     args.projected_size, 
+                     args.hidden_size, 
+                     args.word_size,
+                     args.max_frames, 
+                     args.max_words, 
+                     vocab)
     #bi_lstm.load_state_dict(torch.load(best_banet_pth_path))
-    bi_lstm.load_state_dict(torch.load(best_meteor_pth_path))
+    bi_lstm.load_state_dict(torch.load(args.best_meteor_pth_path))
     bi_lstm.cuda()
     bi_lstm.eval()
 
-    videos = sorted(os.listdir(video_root), key=video_sort_lambda)
+    videos = sorted(os.listdir(args.video_root), key=args.video_sort_lambda)
 
     if len(sys.argv) > 1:
         vid = int(sys.argv[1])
-        video_path = os.path.join(video_root, videos[vid])
+        video_path = os.path.join(args.video_root, videos[vid])
         video_feat = torch.autograd.Variable(torch.from_numpy(features[vid]))
         sample(vocab, video_feat, bi_lstm, video_path, vid)
     else:
@@ -96,6 +95,6 @@ if __name__ == '__main__':
         # for vid in selected_videos:
         for vid in range(1000,1100):
             print(vid)
-            video_path = os.path.join(video_root, videos[vid])
+            video_path = os.path.join(args.video_root, videos[vid])
             video_feat = torch.autograd.Variable(torch.from_numpy(features[vid]))
             sample(vocab, video_feat, bi_lstm, video_path, vid)

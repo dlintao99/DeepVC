@@ -7,8 +7,7 @@ import sys
 import shutil
 import pickle
 import time
-from utils import blockPrint, enablePrint
-from caption import Vocabulary
+from utils import blockPrint, enablePrint, Vocabulary
 from data import get_train_loader
 from model import BiLSTM
 import torch
@@ -17,60 +16,58 @@ import numpy as np
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 from evaluate import evaluate
-from args import vocab_pkl_path, train_caption_pkl_path, feature_h5_path
-from args import num_epochs, batch_size, learning_rate, ss_factor
-from args import projected_size, word_size, hidden_size
-from args import feature_size, max_frames, max_words
-from args import use_checkpoint
-from args import model_pth_path, optimizer_pth_path
-from args import best_meteor_pth_path, best_meteor_optimizer_pth_path
-from args import best_cider_pth_path, best_cider_optimizer_pth_path
-from args import test_range, test_prediction_txt_path, test_reference_txt_path
-#from args import val_range, val_prediction_txt_path, val_reference_txt_path
-from args import log_environment
 from tensorboard_logger import configure, log_value
+from options import args
+
 sys.path.append('./coco-caption/')
 from pycocotools.coco import COCO
 
+
 # initialize
 
-configure(log_environment, flush_secs=10)
+configure(args.log_environment, flush_secs=10)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## load vocabulary list
-with open(vocab_pkl_path, 'rb') as f:
+with open(args.vocab_pkl_path, 'rb') as f:
     vocab = pickle.load(f)
 vocab_size = len(vocab)
 
 ## initialize model
-bi_lstm = BiLSTM(feature_size, projected_size, hidden_size, word_size, max_frames, max_words, vocab)
+bi_lstm = BiLSTM(args.feature_size, 
+                 args.projected_size, 
+                 args.hidden_size, 
+                 args.word_size, 
+                 args.max_frames, 
+                 args.max_words, 
+                 vocab)
 print('Total parameters:', sum(param.numel() for param in bi_lstm.parameters()))
 
 ## initialize loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=args.learning_rate)
 
 ## initialize train_data_loader
-train_loader = get_train_loader(train_caption_pkl_path, feature_h5_path, batch_size)
+train_loader = get_train_loader(args.train_caption_pkl_path, args.feature_h5_path, args.batch_size)
 total_step = len(train_loader)
 
 ## initialize the ground-truth for reference
-reference_json_path = '{0}.json'.format(test_reference_txt_path)
+reference_json_path = '{0}.json'.format(args.test_reference_txt_path)
 reference = COCO(reference_json_path)
 
 # reload from last training
 
 ## reload model
-if os.path.exists(model_pth_path) and use_checkpoint:
-    bi_lstm.load_state_dict(torch.load(model_pth_path))
+if os.path.exists(args.model_pth_path) and args.use_checkpoint:
+    bi_lstm.load_state_dict(torch.load(args.model_pth_path))
 bi_lstm.to(DEVICE)
 
 ## reload optimizer
-if os.path.exists(optimizer_pth_path) and use_checkpoint:
-    optimizer.load_state_dict(torch.load(optimizer_pth_path))
+if os.path.exists(args.optimizer_pth_path) and args.use_checkpoint:
+    optimizer.load_state_dict(torch.load(args.optimizer_pth_path))
 
-print('Learning rate: %.5f' % learning_rate)
-print('Batch size: %d' % batch_size)
+print('Learning rate: %.5f' % args.learning_rate)
+print('Batch size: %d' % args.batch_size)
 
 # start training
 best_meteor = 0
@@ -84,11 +81,11 @@ e = None
 saving_schedule = [int(x * total_step) for x in [0.25, 0.5, 0.75, 1.0]]
 print('total: ', total_step)
 print('saving_schedule: ', saving_schedule)
-for epoch in range(num_epochs):
+for epoch in range(args.num_epochs):
     start_time = time.time()
     if epoch % 10 ==0 and epoch > 0:
         learning_rate /= 10
-    epsilon = max(0.6, ss_factor / (ss_factor + np.exp(epoch / ss_factor)))
+    epsilon = max(0.6, args.ss_factor / (args.ss_factor + np.exp(epoch / args.ss_factor)))
     #epsilon = max(0.75, 1 - int(epoch / 5) * 0.05)
     print('epoch:%d\tepsilon:%.8f' % (epoch, epsilon))
     log_value('epsilon', epsilon, epoch)
@@ -123,10 +120,10 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-        if i % 10 == 0 or bsz < batch_size:
-            loss_count /= 10 if bsz == batch_size else i % 10
+        if i % 10 == 0 or bsz < args.batch_size:
+            loss_count /= 10 if bsz == args.batch_size else i % 10
             print('Epoch [%d/%d], Step [%d/%d], Loss: %.4f, Perplexity: %5.4f' %
-                  (epoch, num_epochs, i, total_step, loss_count,
+                  (epoch, args.num_epochs, i, total_step, loss_count,
                    np.exp(loss_count)))
             loss_count = 0
             tokens = tokens.max(2)[1]
@@ -137,14 +134,14 @@ for epoch in range(num_epochs):
             print('WE: %s\nGT: %s' % (we, gt))
 
         if i in saving_schedule:
-            torch.save(bi_lstm.state_dict(), model_pth_path)
-            torch.save(optimizer.state_dict(), optimizer_pth_path)
+            torch.save(bi_lstm.state_dict(), args.model_pth_path)
+            torch.save(optimizer.state_dict(), args.optimizer_pth_path)
 
             # 计算一下在val集上的性能并记录下来
             blockPrint()
             start_time_eval = time.time()
             bi_lstm.eval()
-            metrics = evaluate(vocab, bi_lstm, test_range, test_prediction_txt_path, reference)
+            metrics = evaluate(vocab, bi_lstm, args.test_range, args.test_prediction_txt_path, reference)
             end_time_eval = time.time()
             enablePrint()
             print('evaluate time: %.3fs' % (end_time_eval-start_time_eval))
@@ -154,13 +151,13 @@ for epoch in range(num_epochs):
                 print('%s: %.6f' % (k, v))
                 if k == 'METEOR' and v > best_meteor:
                     # 备份在val集上METEOR值最好的模型
-                    shutil.copy2(model_pth_path, best_meteor_pth_path)
-                    shutil.copy2(optimizer_pth_path, best_meteor_optimizer_pth_path)
+                    shutil.copy2(args.model_pth_path, args.best_meteor_pth_path)
+                    shutil.copy2(args.optimizer_pth_path, args.best_meteor_optimizer_pth_path)
                     best_meteor = v
                 if k == 'CIDEr' and v > best_cider:
                     # 备份在val集上CIDEr值最好的模型
-                    shutil.copy2(model_pth_path, best_cider_pth_path)
-                    shutil.copy2(optimizer_pth_path, best_cider_optimizer_pth_path)
+                    shutil.copy2(args.model_pth_path, args.best_cider_pth_path)
+                    shutil.copy2(args.optimizer_pth_path, args.best_cider_optimizer_pth_path)
                     best_cider = v
                     lr_decay_flag = 0
                 if k == 'CIDEr' and v < best_cider:
@@ -170,9 +167,9 @@ for epoch in range(num_epochs):
             # if lr_decay_flag == 16:
             #     learning_rate /= 5
             #     lr_decay_flag = 0
-            print('Step: %d, Learning rate: %.8f' % (epoch*len(saving_schedule)+count, learning_rate))
-            optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=learning_rate)
-            log_value('Learning rate', learning_rate, epoch*len(saving_schedule)+count)
+            print('Step: %d, Learning rate: %.8f' % (epoch*len(saving_schedule)+count, args.learning_rate))
+            optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=args.learning_rate)
+            log_value('Learning rate', args.learning_rate, epoch*len(saving_schedule)+count)
             count += 1
             count %= 4
             bi_lstm.train()

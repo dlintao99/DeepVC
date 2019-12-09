@@ -12,8 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from allennlp.nn.beam_search import BeamSearch
-from args import drop_out, beam_size, vocab_embed_path
-
+from options import args
 
 class BiEncoder(nn.Module):
     def __init__(self, feature_size, projected_size, hidden_size, max_frames):
@@ -32,15 +31,15 @@ class BiEncoder(nn.Module):
         # feature embedding
         self.feature_embed = nn.Linear(feature_size, projected_size)
         nn.init.xavier_normal_(self.feature_embed.weight)
-        self.frame_drop = nn.Dropout(p=drop_out)
+        self.frame_drop = nn.Dropout(p=args.drop_out)
 
         # lstm encoder 1
         self.lstm1_cell = nn.LSTMCell(projected_size, hidden_size)
-        self.lstm1_drop = nn.Dropout(p=drop_out)
+        self.lstm1_drop = nn.Dropout(p=args.drop_out)
 
         # lstm encoder 2
         self.lstm2_cell = nn.LSTMCell(projected_size, hidden_size)
-        self.lstm2_drop = nn.Dropout(p=drop_out)
+        self.lstm2_drop = nn.Dropout(p=args.drop_out)
 
     def _init_lstm_state(self, d):
         batch_size = d.size(0)
@@ -165,11 +164,11 @@ class Decoder(nn.Module):
         # with open(vocab_embed_path, 'rb') as f:
         #     embedding_weight = pickle.load(f)
         # self.word_embed = nn.Embedding.from_pretrained(embedding_weight, freeze=False)
-        self.word_drop = nn.Dropout(p=drop_out)
+        self.word_drop = nn.Dropout(p=args.drop_out)
 
         # lstm decoder
         self.lstm = nn.LSTMCell(hidden_size + word_size, hidden_size)
-        self.lstm_drop = nn.Dropout(p=drop_out)
+        self.lstm_drop = nn.Dropout(p=args.drop_out)
 
         # MFB module
         self.mfb = MFB(hidden_size)
@@ -183,7 +182,7 @@ class Decoder(nn.Module):
         nn.init.xavier_normal_(self.word_restore.weight)
 
         # beam search
-        self.beam_search = BeamSearch(vocab('<end>'), max_words, beam_size, per_node_beam_size=beam_size)
+        self.beam_search = BeamSearch(vocab('<end>'), max_words, args.beam_size, per_node_beam_size=args.beam_size)
 
     def _init_lstm_state(self, d):
         batch_size = d.size(0)

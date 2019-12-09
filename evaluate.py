@@ -6,22 +6,19 @@
 from __future__ import unicode_literals
 from __future__ import absolute_import
 import pickle
-from utils import CocoResFormat
+from utils import CocoResFormat, Vocabulary
 import torch
 from torch.autograd import Variable
-from caption import Vocabulary
 from data import get_eval_loader
 from model import BiLSTM
-from args import vocab_pkl_path, feature_h5_path
-from args import model_pth_path, best_meteor_pth_path, best_cider_pth_path
-from args import feature_size, max_frames, max_words
-from args import projected_size, hidden_size, word_size
-from args import test_range, test_prediction_txt_path, test_reference_txt_path
+from options import args
 import sys
-sys.path.append('./coco-caption/')
 import argparse
+
+sys.path.append('./coco-caption/')
 from pycocotools.coco import COCO
 from pycocoevalcap.eval import COCOEvalCap
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def measure(prediction_txt_path, reference):
@@ -43,7 +40,7 @@ def measure(prediction_txt_path, reference):
 
 def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
     # 载入测试数据集
-    eval_loader = get_eval_loader(eval_range, feature_h5_path)
+    eval_loader = get_eval_loader(eval_range, args.feature_h5_path)
 
     result = {}
     for i, (videos, video_ids) in enumerate(eval_loader):
@@ -68,26 +65,26 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
 
 
 if __name__ == '__main__':
-    with open(vocab_pkl_path, 'rb') as f:
+    with open(args.vocab_pkl_path, 'rb') as f:
         vocab = pickle.load(f)
-    parser = argparse.ArgumentParser(description='evaluate a video captioning model')
-
-    parser.add_argument('--metric', dest='metric', type=str,
-                        help='choose the metric from METEOR|CIDEr')
-    args = parser.parse_args()
 
     # 载入预训练模型
-    bi_lstm = BiLSTM(feature_size, projected_size, hidden_size, word_size, max_frames, max_words, vocab)
-    if not args.metric:
-        bi_lstm.load_state_dict(torch.load(model_pth_path))
-    elif args.metric == 'METEOR':
-        bi_lstm.load_state_dict(torch.load(best_meteor_pth_path))
-    elif args.metric == 'CIDEr':
-        bi_lstm.load_state_dict(torch.load(best_cider_pth_path))
+    bi_lstm = BiLSTM(args.feature_size, 
+                     args.projected_size, 
+                     args.hidden_size, 
+                     args.word_size, 
+                     args.max_frames, 
+                     args.max_words, vocab)
+    if not args.optimal_metric:
+        bi_lstm.load_state_dict(torch.load(args.model_pth_path))
+    elif args.optimal_metric == 'METEOR':
+        bi_lstm.load_state_dict(torch.load(args.best_meteor_pth_path))
+    elif args.optimal_metric == 'CIDEr':
+        bi_lstm.load_state_dict(torch.load(args.best_cider_pth_path))
     else:
-        print('Please choose the metric from METEOR|CIDEr')
+        print('Please choose the metric from METEOR|CIDEr to obtain its maximum')
     bi_lstm.to(DEVICE)
     bi_lstm.eval()
-    reference_json_path = '{0}.json'.format(test_reference_txt_path)
+    reference_json_path = '{0}.json'.format(args.test_reference_txt_path)
     reference = COCO(reference_json_path)
-    evaluate(vocab, bi_lstm, test_range, test_prediction_txt_path, reference)
+    evaluate(vocab, bi_lstm, args.test_range, args.test_prediction_txt_path, reference)

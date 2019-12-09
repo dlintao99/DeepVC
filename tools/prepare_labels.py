@@ -10,52 +10,13 @@ import json
 import nltk
 import pickle
 import pprint
+import sys
+import torch
 from collections import Counter
 
-from args import ds
-from args import train_range, val_range, test_range
-from args import anno_json_path, vocab_pkl_path
-from args import train_caption_pkl_path, val_caption_pkl_path, test_caption_pkl_path
-from args import max_words  # 文本序列的规定长度
-from args import val_reference_txt_path, test_reference_txt_path
-from utils import create_reference_json, build_msvd_annotation, build_msrvtt_annotation
-import torch
-
-
-class Vocabulary(object):
-
-    def __init__(self):
-        self.word2idx = {}
-        self.idx2word = []
-        self.nwords = 0
-        self.add_word('<pad>')
-        self.add_word('<start>')
-        self.add_word('<end>')
-        self.add_word('<unk>')
-
-    def add_word(self, w):
-        '''
-        将新单词加入词汇表中
-        '''
-        if w not in self.word2idx:
-            self.word2idx[w] = self.nwords
-            self.idx2word.append(w)
-            self.nwords += 1
-
-    def __call__(self, w):
-        '''
-        返回单词对应的id
-        '''
-        if w not in self.word2idx:
-            return self.word2idx['<unk>']
-        return self.word2idx[w]
-
-    def __len__(self):
-        '''
-        得到词汇表中词汇的数量
-        '''
-        return self.nwords
-
+sys.path.append("..")
+from options import args
+from utils import Vocabulary, create_reference_json, build_msvd_annotation, build_msrvtt_annotation
 
 def prepare_vocab(sentences):
     '''
@@ -88,9 +49,9 @@ def prepare_vocab(sentences):
         vocab.add_word(w)
 
     print('Vocabulary has %d words.' % len(vocab))
-    with open(vocab_pkl_path, 'wb') as f:
+    with open(args.vocab_pkl_path, 'wb') as f:
         pickle.dump(vocab, f)
-    print('Save vocabulary to %s' % vocab_pkl_path)
+    print('Save vocabulary to %s' % args.vocab_pkl_path)
     return vocab
 
 
@@ -101,11 +62,11 @@ def prepare_split():
     '''
     split_dict = {}
 
-    for i in range(*train_range):
+    for i in range(*args.train_range):
         split_dict[i] = 'train'
-    for i in range(*val_range):
+    for i in range(*args.val_range):
         split_dict[i] = 'val'
-    for i in range(*test_range):
+    for i in range(*args.test_range):
         split_dict[i] = 'test'
 
     # pprint.pprint(split_dict)
@@ -139,16 +100,16 @@ def prepare_caption(vocab, split_dict, anno_data):
         words = caption.split(' ')
         l = len(words) + 1  # 加上一个<end>
         lengths[split].append(l)
-        if l > max_words:
+        if l > args.max_words:
             # 如果caption长度超出了规定的长度，就做截断处理
-            words = words[:max_words - 1]  # 最后要留一个位置给<end>
+            words = words[:args.max_words - 1]  # 最后要留一个位置给<end>
             count += 1
         # 把caption用word id来表示
         tokens = []
         for word in words:
             tokens.append(vocab(word))
         tokens.append(vocab('<end>'))
-        while l < max_words:
+        while l < args.max_words:
             # 如果caption的长度少于规定的长度，就用<pad>（0）补齐
             tokens.append(vocab('<pad>'))
             l += 1
@@ -159,18 +120,18 @@ def prepare_caption(vocab, split_dict, anno_data):
     print('There are %.3f%% too long captions' % (100 * float(count) / len(anno_data)))
 
     # 分别对train val test这三个划分进行存储
-    with open(train_caption_pkl_path, 'wb') as f:
+    with open(args.train_caption_pkl_path, 'wb') as f:
         pickle.dump([captions['train'], lengths['train'], video_ids['train']], f)
         print('Save %d train captions to %s.' % (len(captions['train']),
-                                                 train_caption_pkl_path))
-    with open(val_caption_pkl_path, 'wb') as f:
+                                                 args.train_caption_pkl_path))
+    with open(args.val_caption_pkl_path, 'wb') as f:
         pickle.dump([captions['val'], lengths['val'], video_ids['val']], f)
         print('Save %d val captions to %s.' % (len(captions['val']),
-                                               val_caption_pkl_path))
-    with open(test_caption_pkl_path, 'wb') as f:
+                                               args.val_caption_pkl_path))
+    with open(args.test_caption_pkl_path, 'wb') as f:
         pickle.dump([captions['test'], lengths['test'], video_ids['test']], f)
         print('Save %d test captions to %s.' % (len(captions['test']),
-                                                test_caption_pkl_path))
+                                                args.test_caption_pkl_path))
 
 
 def prepare_gt(anno_data):
@@ -178,11 +139,11 @@ def prepare_gt(anno_data):
     准备ground-truth,用来评估结果的好坏
     '''
     print('Preparing ground-truth...')
-    val_reference_txt = open(val_reference_txt_path, 'w')
-    test_reference_txt = open(test_reference_txt_path, 'w')
+    val_reference_txt = open(args.val_reference_txt_path, 'w')
+    test_reference_txt = open(args.test_reference_txt_path, 'w')
 
-    val_selected_range = range(*val_range)
-    test_selected_range = range(*test_range)
+    val_selected_range = range(*args.val_range)
+    test_selected_range = range(*args.test_range)
     error_count = 0
 
     val_txt = []
@@ -215,22 +176,22 @@ def prepare_gt(anno_data):
     val_reference_txt.close()
     test_reference_txt.close()
 
-    create_reference_json(val_reference_txt_path)
-    create_reference_json(test_reference_txt_path)
+    create_reference_json(args.val_reference_txt_path)
+    create_reference_json(args.test_reference_txt_path)
     print('done!')
 
 
 if __name__ == '__main__':
-    if ds == 'msvd':
+    if args.dataset == 'msvd':
         # 以MSR-VTT数据集的格式生成MSVD数据集的标注
         print('# Build MSVD dataset annotations:')
         build_msvd_annotation()
-    elif ds == 'msr-vtt':
+    elif args.dataset == 'msr-vtt':
         print('# Build MSR-VTT dataset annotations:')
         build_msrvtt_annotation()
 
     # 读取json文件
-    with open(anno_json_path, 'r') as f:
+    with open(args.anno_json_path, 'r') as f:
         anno_json = json.load(f)
     anno_data = anno_json['sentences']
 
