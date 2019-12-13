@@ -8,7 +8,7 @@ import datetime
 parser = argparse.ArgumentParser(description = 'DeepVC')
 
 parser.add_argument('--phase', type = str, default = 'train', 
-                    help = 'choose the run phase of the program from < train | evaluate | apply >')
+                    help = 'choose the run phase of the program from {train, evaluate, apply}')
 
 # paths need to be specified
 parser.add_argument('--path_dir_MSVD', type = str, default = '/home/dlt/workspace/Data/MSVD_DeepVC', 
@@ -22,7 +22,7 @@ parser.add_argument('--path_dir_PModels', type = str, default = '/home/dlt/works
 
 # dataset used to train
 parser.add_argument('--dataset', type = str, default = 'msvd', 
-                    help = 'dataset used to train, choose from < msvd | msrvtt >')
+                    help = 'dataset used to train, choose from {msvd, msrvtt}')
 
 # hyper-parameters about training
 parser.add_argument('--num_epochs', type = int, default = 50, 
@@ -41,6 +41,8 @@ parser.add_argument('--use_checkpoint', type = int, default = 0,
                     help = 'whether to use checkpoint')
 
 # parameters about model
+parser.add_argument('--model', type = str, default = 'BiLSTM_attention',
+                    help = 'choose a model from {S2VT, biLSTM_attention}')
 parser.add_argument('--projected_size', type = int, default = 1000, 
                     help = '?')
 parser.add_argument('--word_size', type = int, default = 300, 
@@ -68,7 +70,7 @@ parser.add_argument('--use_cpt', type = int, default = 0,
 
 # parameters about evaluating
 parser.add_argument('--optimal_metric', type = str, default = '',
-                    help = 'choose the metric from < METEOR | CIDEr > to obtain its maximum')
+                    help = 'choose the metric from {METEOR, CIDEr} to obtain its maximum')
 
 args = parser.parse_args()
 

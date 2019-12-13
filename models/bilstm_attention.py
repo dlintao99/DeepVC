@@ -244,7 +244,8 @@ class Decoder(nn.Module):
             for i in range(self.batch_size):
                 outputs.append(predictions[i, max_index[i], :])
             outputs = torch.stack(outputs)
-
+            #while True:
+            #    pass
         return outputs
 
     def beam_step(self, last_predictions, current_state):
@@ -321,28 +322,9 @@ class Decoder(nn.Module):
         word_logits = self.word_restore(decoder_output)  # b*v
         return word_logits, lstm_h, lstm_c
 
-    def decode_tokens(self, tokens):
-        '''
-        convert word index to caption
-        :param tokens: input word index
-        :return: capiton
-        '''
-        words = []
-        # if len(tokens) == 1:
-        #     captions = 'a'
-        #     return captions
-        for token in tokens:
-            if token == self.vocab('<end>'):
-                break
-            word = self.vocab.idx2word[token]
-            words.append(word)
-        captions = ' '.join(words)
-        return captions
-
-
-class BiLSTM(nn.Module):
+class BiLSTM_attention(nn.Module):
     def __init__(self, feature_size, projected_size, hidden_size, word_size, max_frames, max_words, vocab):
-        super(BiLSTM, self).__init__()
+        super(BiLSTM_attention, self).__init__()
         self.encoder = BiEncoder(feature_size, projected_size, hidden_size, max_frames)
         self.decoder = Decoder(hidden_size, projected_size, hidden_size, word_size, max_words, vocab)
 

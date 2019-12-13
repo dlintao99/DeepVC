@@ -6,11 +6,11 @@
 from __future__ import unicode_literals
 from __future__ import absolute_import
 import pickle
-from utils import CocoResFormat, Vocabulary
+from utils import CocoResFormat, Vocabulary, decode_tokens
 import torch
 from torch.autograd import Variable
 from data import get_eval_loader
-from model import BiLSTM
+import models
 from options import args
 import sys
 import argparse
@@ -47,10 +47,11 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
         # 构造mini batch的Variable
         videos = Variable(videos)
         videos = videos.to(DEVICE)
-
+    
+        print('videos.size()', videos.size())
         outputs = net(videos, None)
         for (tokens, vid) in zip(outputs, video_ids):
-            s = net.decoder.decode_tokens(tokens.data)
+            s = decode_tokens(tokens.data, vocab)
             result[vid] = s
 
     prediction_txt = open(prediction_txt_path, 'w')
@@ -69,22 +70,34 @@ if __name__ == '__main__':
         vocab = pickle.load(f)
 
     # 载入预训练模型
-    bi_lstm = BiLSTM(args.feature_size, 
-                     args.projected_size, 
-                     args.hidden_size, 
-                     args.word_size, 
-                     args.max_frames, 
-                     args.max_words, vocab)
+    ## initialize model
+    if (args.model == 'S2VT'):
+        model = models.S2VT(args.feature_size, 
+                            args.projected_size, 
+                            args.hidden_size, 
+                            args.word_size, 
+                            args.max_frames, 
+                            args.max_words, 
+                            vocab)
+    elif (args.model == 'BiLSTM_attention'):
+        model = models.BiLSTM_attention(args.feature_size, 
+                                        args.projected_size, 
+                                        args.hidden_size, 
+                                        args.word_size, 
+                                        args.max_frames, 
+                                        args.max_words, 
+                                        vocab)
+
     if not args.optimal_metric:
-        bi_lstm.load_state_dict(torch.load(args.model_pth_path))
+        model.load_state_dict(torch.load(args.model_pth_path))
     elif args.optimal_metric == 'METEOR':
-        bi_lstm.load_state_dict(torch.load(args.best_meteor_pth_path))
+        model.load_state_dict(torch.load(args.best_meteor_pth_path))
     elif args.optimal_metric == 'CIDEr':
-        bi_lstm.load_state_dict(torch.load(args.best_cider_pth_path))
+        model.load_state_dict(torch.load(args.best_cider_pth_path))
     else:
         print('Please choose the metric from METEOR|CIDEr to obtain its maximum')
-    bi_lstm.to(DEVICE)
-    bi_lstm.eval()
+    model.to(DEVICE)
+    model.eval()
     reference_json_path = '{0}.json'.format(args.test_reference_txt_path)
     reference = COCO(reference_json_path)
-    evaluate(vocab, bi_lstm, args.test_range, args.test_prediction_txt_path, reference)
+    evaluate(vocab, model, args.test_range, args.test_prediction_txt_path, reference)
