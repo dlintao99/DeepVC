@@ -1,16 +1,13 @@
 # coding: utf-8
 
 from __future__ import print_function
-from builtins import range
 import os
 import sys
 import shutil
 import pickle
 import time
-from utils import blockPrint, enablePrint, Vocabulary
-from data import get_train_loader
-from model import BiLSTM
 import torch
+import models
 import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
@@ -18,6 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 from evaluate import evaluate
 from tensorboard_logger import configure, log_value
 from options import args
+from builtins import range
+from utils import blockPrint, enablePrint, Vocabulary, decode_tokens
+from data import get_train_loader
 
 sys.path.append('./coco-caption/')
 from pycocotools.coco import COCO
@@ -34,18 +34,30 @@ with open(args.vocab_pkl_path, 'rb') as f:
 vocab_size = len(vocab)
 
 ## initialize model
-bi_lstm = BiLSTM(args.feature_size, 
-                 args.projected_size, 
-                 args.hidden_size, 
-                 args.word_size, 
-                 args.max_frames, 
-                 args.max_words, 
-                 vocab)
-print('Total parameters:', sum(param.numel() for param in bi_lstm.parameters()))
+if (args.model == 'S2VT'):
+    model = models.S2VT(args.max_frames, 
+                        args.max_words,
+                        args.feature_size, 
+                        args.projected_size,
+                        args.hidden_size, 
+                        args.word_size,
+                        vocab,
+                        args.drop_out,
+                        DEVICE)
+elif (args.model == 'BiLSTM_attention'):
+    model = models.BiLSTM_attention(args.feature_size, 
+                                    args.projected_size, 
+                                    args.hidden_size, 
+                                    args.word_size, 
+                                    args.max_frames, 
+                                    args.max_words, 
+                                    vocab)
+                                    
+print('Total parameters:', sum(param.numel() for param in model.parameters()))
 
 ## initialize loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=args.learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 ## initialize train_data_loader
 train_loader = get_train_loader(args.train_caption_pkl_path, args.feature_h5_path, args.batch_size)
@@ -59,8 +71,8 @@ reference = COCO(reference_json_path)
 
 ## reload model
 if os.path.exists(args.model_pth_path) and args.use_checkpoint:
-    bi_lstm.load_state_dict(torch.load(args.model_pth_path))
-bi_lstm.to(DEVICE)
+    model.load_state_dict(torch.load(args.model_pth_path))
+model.to(DEVICE)
 
 ## reload optimizer
 if os.path.exists(args.optimizer_pth_path) and args.use_checkpoint:
@@ -84,7 +96,7 @@ print('saving_schedule: ', saving_schedule)
 for epoch in range(args.num_epochs):
     start_time = time.time()
     if epoch % 10 ==0 and epoch > 0:
-        learning_rate /= 10
+        args.learning_rate /= 10
     epsilon = max(0.6, args.ss_factor / (args.ss_factor + np.exp(epoch / args.ss_factor)))
     #epsilon = max(0.75, 1 - int(epoch / 5) * 0.05)
     print('epoch:%d\tepsilon:%.8f' % (epoch, epsilon))
@@ -94,7 +106,7 @@ for epoch in range(args.num_epochs):
         #videos = torch.tensor(videos, requires_grad = True)
         #targets = torch.tensor(captions, requires_grad = True)
         videos = Variable(videos)
-        targets = Variable(captions)
+        targets = Variable(captions) # batch_size * max_words
 
         videos = videos.to(DEVICE)
         targets = targets.to(DEVICE)
@@ -103,17 +115,18 @@ for epoch in range(args.num_epochs):
         e = epsilon
 
         optimizer.zero_grad()
-        outputs = bi_lstm(videos, targets, epsilon)
-        tokens = outputs
+        outputs = model(videos, targets, epsilon) # batch_size * num_time_steps_decoder(padding may be cut) * num_words_vocabulary
+        tokens = outputs # batch_size * num_time_steps_decoder(padding may be cut) * num_words_vocabulary
         # 因为在一个epoch快要结束的时候，有可能采不到一个刚好的batch
         # 所以要重新计算一下batch size
         bsz = len(captions)
         # 把output压缩（剔除pad的部分）之后拉直
-        outputs = torch.cat([outputs[j][:cap_lens[j]] for j in range(bsz)], 0)
-        outputs = outputs.view(-1, vocab_size) # ?
+        outputs = torch.cat([outputs[j][:cap_lens[j]] for j in range(bsz)], 0) # may cut predicted words?
+        #outputs = outputs.view(-1, vocab_size) # ?
         # 把target压缩（剔除pad的部分）之后拉直
         targets = torch.cat([targets[j][:cap_lens[j]] for j in range(bsz)], 0)
-        targets = targets.view(-1)
+        #targets = targets.view(-1) # ?
+
         loss = criterion(outputs, targets)
         log_value('loss', loss.item(), epoch * total_step + i)
         loss_count += loss.item()
@@ -121,27 +134,30 @@ for epoch in range(args.num_epochs):
         optimizer.step()
 
         if i % 10 == 0 or bsz < args.batch_size:
+            # calculate the average loss of consecutive 10 examples
             loss_count /= 10 if bsz == args.batch_size else i % 10
             print('Epoch [%d/%d], Step [%d/%d], Loss: %.4f, Perplexity: %5.4f' %
-                  (epoch, args.num_epochs, i, total_step, loss_count,
-                   np.exp(loss_count)))
+                  (epoch, args.num_epochs, i, total_step, loss_count, np.exp(loss_count)))
             loss_count = 0
+
+            # apply the model on the first example of current batch
             tokens = tokens.max(2)[1]
-            tokens = tokens.data[0].squeeze()
-            we = bi_lstm.decoder.decode_tokens(tokens)
-            gt = bi_lstm.decoder.decode_tokens(captions[0].squeeze())
+            #tokens = tokens[0].squeeze()
+            tokens = tokens[0]
+            we = decode_tokens(tokens, vocab)
+            gt = decode_tokens(captions[0].squeeze(), vocab)
             print('[vid:%d]' % video_ids[0])
             print('WE: %s\nGT: %s' % (we, gt))
 
         if i in saving_schedule:
-            torch.save(bi_lstm.state_dict(), args.model_pth_path)
+            torch.save(model.state_dict(), args.model_pth_path)
             torch.save(optimizer.state_dict(), args.optimizer_pth_path)
 
             # 计算一下在val集上的性能并记录下来
             blockPrint()
             start_time_eval = time.time()
-            bi_lstm.eval()
-            metrics = evaluate(vocab, bi_lstm, args.test_range, args.test_prediction_txt_path, reference)
+            model.eval()
+            metrics = evaluate(vocab, model, args.test_range, args.test_prediction_txt_path, reference)
             end_time_eval = time.time()
             enablePrint()
             print('evaluate time: %.3fs' % (end_time_eval-start_time_eval))
@@ -165,18 +181,18 @@ for epoch in range(args.num_epochs):
 
             # learning rate decay
             # if lr_decay_flag == 16:
-            #     learning_rate /= 5
+            #     args.learning_rate /= 5
             #     lr_decay_flag = 0
             print('Step: %d, Learning rate: %.8f' % (epoch*len(saving_schedule)+count, args.learning_rate))
-            optimizer = torch.optim.Adam(bi_lstm.parameters(), lr=args.learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
             log_value('Learning rate', args.learning_rate, epoch*len(saving_schedule)+count)
             count += 1
             count %= 4
-            bi_lstm.train()
+            model.train()
 
 
     end_time = time.time()
     print("*******One epoch time: %.3fs*******\n" % (end_time - start_time))
 
 # with SummaryWriter(log_dir='./graph') as writer:
-#     writer.add_graph(bi_lstm, (v, t))
+#     writer.add_graph(model, (v, t))

@@ -50,6 +50,25 @@ class Vocabulary(object):
         '''
         return self.nwords
 
+def decode_tokens(tokens, vocabulary):
+    '''
+    @function decode_tokens: convert word index to caption
+    @param tokens: input word index
+    @param vocabulary: vocabulary dictionary
+    @return caption
+    '''
+    words = []
+    # if len(tokens) == 1:
+    #     captions = 'a'
+    #     return captions
+    for token in tokens:
+        if token == vocabulary('<end>'):
+            break
+        word = vocabulary.idx2word[token]
+        words.append(word)
+    captions = ' '.join(words)
+    return captions
+
 class CocoAnnotations:
 
     def __init__(self):
