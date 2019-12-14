@@ -43,8 +43,8 @@ parser.add_argument('--use_checkpoint', type = int, default = 0,
                     help = 'whether to use checkpoint')
 
 # parameters about model
-parser.add_argument('--model', type = str, default = 'BiLSTM_attention',
-                    help = 'choose a model from {S2VT, BiLSTM_attention}')
+parser.add_argument('--model', type = str, default = 'BiLSTM_attention_deepout',
+                    help = 'choose a model from {S2VT, BiLSTM_attention_deepout}')
 parser.add_argument('--projected_size', type = int, default = 1000, 
                     help = '?')
 parser.add_argument('--word_size', type = int, default = 300, 
