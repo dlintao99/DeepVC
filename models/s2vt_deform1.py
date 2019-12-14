@@ -156,7 +156,7 @@ class Decoder(nn.Module):
             word_logits, lstm_h, lstm_c = self.decode(video_encoded, lstm_h, lstm_c, word)
 
             # store log probabilities
-            log_prob = F.log_softmax(word_logits, dim=1)  # b*v
+            log_prob = nn.function.log_softmax(word_logits, dim=1)  # b*v
             log_probs.append(log_prob)
 
             #update new state
