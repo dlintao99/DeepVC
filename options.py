@@ -69,7 +69,7 @@ parser.add_argument('--use_cpt', type = int, default = 0,
                     help = 'whether to use checkpoint')
 
 # parameters about evaluating
-parser.add_argument('--optimal_metric', type = str, default = '',
+parser.add_argument('--optimal_metric', type = str, default = 'METEOR',
                     help = 'choose the metric from {METEOR, CIDEr} to obtain its maximum')
 
 args = parser.parse_args()

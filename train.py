@@ -194,5 +194,7 @@ for epoch in range(args.num_epochs):
     end_time = time.time()
     print("*******One epoch time: %.3fs*******\n" % (end_time - start_time))
 
+print('best_meteor:', best_meteor)
+
 # with SummaryWriter(log_dir='./graph') as writer:
 #     writer.add_graph(model, (v, t))
