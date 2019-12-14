@@ -318,13 +318,14 @@ class Decoder(nn.Module):
         decoder_input = torch.cat([video_encoded_att, word], dim=1)
         lstm_h, lstm_c = self.lstm(decoder_input, (lstm_h, lstm_c))
         lstm_h = self.lstm_drop(lstm_h)
+        # deepout layer
         decoder_output = torch.tanh(self.fc2(torch.cat([lstm_h, video_encoded_att, word], dim=1)))  # b*h
         word_logits = self.word_restore(decoder_output)  # b*v
         return word_logits, lstm_h, lstm_c
 
-class BiLSTM_attention(nn.Module):
+class BiLSTM_attention_deepout(nn.Module):
     def __init__(self, feature_size, projected_size, hidden_size, word_size, max_frames, max_words, vocab):
-        super(BiLSTM_attention, self).__init__()
+        super(BiLSTM_attention_deepout, self).__init__()
         self.encoder = BiEncoder(feature_size, projected_size, hidden_size, max_frames)
         self.decoder = Decoder(hidden_size, projected_size, hidden_size, word_size, max_words, vocab)
 

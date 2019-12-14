@@ -1,6 +1,7 @@
 '''
-@file s2vt.py: the implementation of S2VT model with some changes.
-Encoder and decoder does not share parameters. Encoder's output serve as the initial hidden state of decoder's RNN.
+@file s2vt_deform1.py: the implementation of S2VT model with some changes.
+Encoder and decoder does not share parameters. Encoder's output serve as 
+the initial hidden state of decoder's RNN.
 relevant paper: Sequence to Sequence -- Video to Text, ICCV 2015.
 '''
 

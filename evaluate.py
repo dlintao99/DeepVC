@@ -72,14 +72,16 @@ if __name__ == '__main__':
     # 载入预训练模型
     ## initialize model
     if (args.model == 'S2VT'):
-        model = models.S2VT(args.feature_size, 
-                            args.projected_size, 
+        model = models.S2VT(args.max_frames, 
+                            args.max_words,
+                            args.feature_size, 
+                            args.projected_size,
                             args.hidden_size, 
-                            args.word_size, 
-                            args.max_frames, 
-                            args.max_words, 
-                            vocab)
-    elif (args.model == 'BiLSTM_attention'):
+                            args.word_size,
+                            vocab,
+                            args.drop_out,
+                            DEVICE)
+    elif (args.model == 'BiLSTM_attention_deepout'):
         model = models.BiLSTM_attention(args.feature_size, 
                                         args.projected_size, 
                                         args.hidden_size, 

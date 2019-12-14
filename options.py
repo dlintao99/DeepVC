@@ -19,6 +19,8 @@ parser.add_argument('--path_dir_feats', type = str, default = '/home/dlt/workspa
                     help = 'path of directory to save video frames\' features extracted by CNN')
 parser.add_argument('--path_dir_PModels', type = str, default = '/home/dlt/workspace/PModels', 
                     help = 'path of directory to save pretrained models')
+parser.add_argument('--path_dir_results', type = str, default = '/home/dlt/workspace/Codes/DeepVC/results', 
+                    help = 'path of directory to save training results')
 
 # dataset used to train
 parser.add_argument('--dataset', type = str, default = 'msvd', 
@@ -42,7 +44,7 @@ parser.add_argument('--use_checkpoint', type = int, default = 0,
 
 # parameters about model
 parser.add_argument('--model', type = str, default = 'BiLSTM_attention',
-                    help = 'choose a model from {S2VT, biLSTM_attention}')
+                    help = 'choose a model from {S2VT, BiLSTM_attention}')
 parser.add_argument('--projected_size', type = int, default = 1000, 
                     help = '?')
 parser.add_argument('--word_size', type = int, default = 300, 
@@ -69,12 +71,13 @@ parser.add_argument('--use_cpt', type = int, default = 0,
                     help = 'whether to use checkpoint')
 
 # parameters about evaluating
-parser.add_argument('--optimal_metric', type = str, default = '',
+parser.add_argument('--optimal_metric', type = str, default = 'METEOR',
                     help = 'choose the metric from {METEOR, CIDEr} to obtain its maximum')
 
 args = parser.parse_args()
 
-args.log_environment = os.path.join('logs', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))  # tensorboard的记录环境
+args.str_current_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+args.log_environment = os.path.join('logs', args.str_current_time)  # tensorboard的记录环境
 
 # parameters abount datasets
 ## MSVD
@@ -105,6 +108,7 @@ if (args.dataset == 'msvd'):
     args.train_range = args.msvd_train_range
     args.val_range = args.msvd_val_range
     args.test_range = args.msvd_test_range
+    args.path_dir_Dataset = args.path_dir_MSVD
 elif (args.dataset == 'msrvtt'):
     args.video_root = args.msrvtt_video_root
     args.video_sort_lambda = args.msrvtt_video_sort_lambda
@@ -112,6 +116,7 @@ elif (args.dataset == 'msrvtt'):
     args.train_range = args.msrvtt_train_range
     args.val_range = args.msrvtt_val_range
     args.test_range = args.msrvtt_test_range
+    args.path_dir_Dataset = args.path_dir_MSRVTT
 
 if not os.path.exists(args.path_dir_feats):
     os.mkdir(args.path_dir_feats)
@@ -129,15 +134,15 @@ args.feature_h5_feats = 'feats'
 args.feature_h5_lens = 'lens'
 
 # 结果评估相关的参数
-args.result_dir = 'results'
-if not os.path.exists(args.result_dir):
-    os.mkdir(args.result_dir)
+args.path_dir_result = args.path_dir_results + '/' + args.model + '_' + args.dataset + '_' + args.str_current_time
+if not os.path.exists(args.path_dir_result):
+    os.mkdir(args.path_dir_result)
 
-args.val_reference_txt_path = os.path.join(args.result_dir, args.dataset + '_val_references.txt')
-args.val_prediction_txt_path = os.path.join(args.result_dir, args.dataset + '_val_predictions.txt')
+args.val_reference_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_val_references.txt')
+args.val_prediction_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_val_predictions.txt')
 
-args.test_reference_txt_path = os.path.join(args.result_dir, args.dataset + '_test_references.txt')
-args.test_prediction_txt_path = os.path.join(args.result_dir, args.dataset + '_test_predictions.txt')
+args.test_reference_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_test_references.txt')
+args.test_prediction_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_test_predictions.txt')
 
 # checkpoint相关的超参数
 args.resnet_checkpoint = args.path_dir_PModels + '/resnet50-19c8e357.pth'  # 直接用pytorch训练的模型
@@ -145,14 +150,14 @@ args.IRV2_checkpoint = args.path_dir_PModels + '/inceptionresnetv2-520b38e4.pth'
 args.vgg_checkpoint = args.path_dir_PModels + '/vgg16-00b39a1b.pth'  # 从caffe转换而来
 args.c3d_checkpoint = args.path_dir_PModels + '/c3d.pickle'
 
-args.model_pth_path = os.path.join(args.result_dir, args.dataset + '_model.pth')
-args.best_meteor_pth_path = os.path.join(args.result_dir, args.dataset + '_best_meteor.pth')
-args.best_cider_pth_path = os.path.join(args.result_dir, args.dataset + '_best_cider.pth')
-args.optimizer_pth_path = os.path.join(args.result_dir, args.dataset + '_optimizer.pth')
-args.best_meteor_optimizer_pth_path = os.path.join(args.result_dir, args.dataset + '_best_meteor_optimizer.pth')
-args.best_cider_optimizer_pth_path = os.path.join(args.result_dir, args.dataset + '_best_cider_optimizer.pth')
+args.model_pth_path = os.path.join(args.path_dir_result, args.dataset + '_model.pth')
+args.best_meteor_pth_path = os.path.join(args.path_dir_result, args.dataset + '_best_meteor.pth')
+args.best_cider_pth_path = os.path.join(args.path_dir_result, args.dataset + '_best_cider.pth')
+args.optimizer_pth_path = os.path.join(args.path_dir_result, args.dataset + '_optimizer.pth')
+args.best_meteor_optimizer_pth_path = os.path.join(args.path_dir_result, args.dataset + '_best_meteor_optimizer.pth')
+args.best_cider_optimizer_pth_path = os.path.join(args.path_dir_result, args.dataset + '_best_cider_optimizer.pth')
 
-# 图示结果相关的超参数
-args.visual_dir = 'visuals'
-if not os.path.exists(args.visual_dir):
-    os.mkdir(args.visual_dir)
+# 图示结果相关的超参数 ?
+#args.visual_dir = '/visuals' + '/' + args.model + '_' + args.dataset + '_' + args.str_current_time
+#if not os.path.exists(args.visual_dir):
+#    os.mkdir(args.visual_dir)

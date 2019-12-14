@@ -39,9 +39,9 @@ def open_video(video_path):
 
 def sample(vocab, video_feat, model, video_path, vid):
     # 为每个视频建立保存可视化结果的目录
-    img_dir = os.path.join(args.visual_dir, str(vid))
-    if not os.path.exists(img_dir):
-        os.mkdir(img_dir)
+    #img_dir = os.path.join(args.visual_dir, str(vid))
+    #if not os.path.exists(img_dir):
+    #    os.mkdir(img_dir)
 
     # frame_list = open_video(video_path)
     if args.use_cuda:
@@ -65,17 +65,20 @@ if __name__ == '__main__':
         vocab = pickle.load(f)
 
     features = h5py.File(args.feature_h5_path, 'r')[args.feature_h5_feats]
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ## initialize model
     if (args.model == 'S2VT'):
-        model = models.S2VT(args.feature_size, 
-                            args.projected_size, 
+        model = models.S2VT(args.max_frames, 
+                            args.max_words,
+                            args.feature_size, 
+                            args.projected_size,
                             args.hidden_size, 
-                            args.word_size, 
-                            args.max_frames, 
-                            args.max_words, 
-                            vocab)
-    elif (args.model == 'BiLSTM_attention'):
+                            args.word_size,
+                            vocab,
+                            args.drop_out,
+                            DEVICE)
+    elif (args.model == 'BiLSTM_attention_deepout'):
         model = models.BiLSTM_attention(args.feature_size, 
                                         args.projected_size, 
                                         args.hidden_size, 
