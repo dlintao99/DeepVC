@@ -1,7 +1,7 @@
 # coding: utf-8
 
 '''
-    BiLSTM + Soft-Attention + deepout layer
+    BiLSTM + Soft-Attention + sequential deepout layer
 '''
 
 import random
@@ -184,6 +184,10 @@ class Decoder(nn.Module):
         self.word_restore = nn.Linear(hidden_size, self.vocab_size)
         nn.init.xavier_normal_(self.word_restore.weight)
 
+        # sequential deepout layer
+        self.seqDeepout = nn.LSTMCell(2 * hidden_size + word_size, hidden_size)
+        self.seqDeepout_drop = nn.Dropout(p = args.drop_out)
+
         # beam search
         self.beam_search = BeamSearch(vocab('<end>'), max_words, args.beam_size, per_node_beam_size=args.beam_size)
 
@@ -212,7 +216,13 @@ class Decoder(nn.Module):
 
         # initialize lstm decoder state
         lstm_h, lstm_c = self._init_lstm_state(video_encoded1)
-        start_state = {'lstm_h': lstm_h, 'lstm_c': lstm_c, 'video_encoded': video_encoded}
+        lstm_h_deepout, lstm_c_deepout = self._init_lstm_state(video_encoded1)
+
+        start_state = {'lstm_h': lstm_h, 
+                       'lstm_c': lstm_c, 
+                       'lstm_h_deepout': lstm_h_deepout, 
+                       'lstm_c_deepout': lstm_c_deepout, 
+                       'video_encoded': video_encoded}
 
         # training stage
         if not infer:
@@ -223,7 +233,12 @@ class Decoder(nn.Module):
                     break
 
                 # lstm decoder with attention model
-                word_logits, lstm_h, lstm_c = self.decode(video_encoded, lstm_h, lstm_c, word)
+                word_logits, lstm_h, lstm_c, lstm_h_deepout, lstm_c_deepout = self.decode(video_encoded, 
+                                                                                          lstm_h, 
+                                                                                          lstm_c, 
+                                                                                          lstm_h_deepout, 
+                                                                                          lstm_c_deepout, 
+                                                                                          word)
                 outputs.append(word_logits)
 
                 # teacher_forcing: a training trick
@@ -277,20 +292,29 @@ class Decoder(nn.Module):
         log_probs = []
         new_state = {}
         num = int(group_size / batch_size)  # 1 or beam_size
+
         for k, state in current_state.items():
             _, *last_dims = state.size()
             current_state[k] = state.reshape(batch_size, num, *last_dims)
             new_state[k] = []
+        
         for i in range(num):
             # read current state
             lstm_h = current_state['lstm_h'][:, i, :]
             lstm_c = current_state['lstm_c'][:, i, :]
+            lstm_h_deepout = current_state['lstm_h_deepout'][:, i, :]
+            lstm_c_deepout = current_state['lstm_c_deepout'][:, i, :]
             video_encoded = current_state['video_encoded'][:, i, :]
 
             # decode stage
             word_id = last_predictions.reshape(batch_size, -1)[:, i]
             word = self.word_embed(word_id)
-            word_logits, lstm_h, lstm_c = self.decode(video_encoded, lstm_h, lstm_c, word)
+            word_logits, lstm_h, lstm_c, lstm_h_deepout, lstm_c_deepout = self.decode(video_encoded, 
+                                                                                      lstm_h, 
+                                                                                      lstm_c, 
+                                                                                      lstm_h_deepout, 
+                                                                                      lstm_c_deepout, 
+                                                                                      word)
 
             # store log probabilities
             log_prob = F.log_softmax(word_logits, dim=1)  # b*v
@@ -299,6 +323,8 @@ class Decoder(nn.Module):
             #update new state
             new_state['lstm_h'].append(lstm_h)
             new_state['lstm_c'].append(lstm_c)
+            new_state['lstm_h_deepout'].append(lstm_h_deepout)
+            new_state['lstm_c_deepout'].append(lstm_c_deepout)
             new_state['video_encoded'].append(video_encoded)
 
         # transform log probabilities
@@ -316,19 +342,26 @@ class Decoder(nn.Module):
             new_state[k] = new_state[k].reshape(group_size, *last_dims) #(batch_size*beam_size, *)
         return (log_probs, new_state)
 
-    def decode(self, video_encoded, lstm_h, lstm_c, word):
+    def decode(self, video_encoded, lstm_h, lstm_c, lstm_h_deepout, lstm_c_deepout, word):
         video_encoded_att = self.softatt(video_encoded, lstm_h)  # b*h
         decoder_input = torch.cat([video_encoded_att, word], dim=1)
         lstm_h, lstm_c = self.lstm(decoder_input, (lstm_h, lstm_c))
         lstm_h = self.lstm_drop(lstm_h)
+        
         # deepout layer
-        decoder_output = torch.tanh(self.fc2(torch.cat([lstm_h, video_encoded_att, word], dim=1)))  # b*h
-        word_logits = self.word_restore(decoder_output)  # b*v
-        return word_logits, lstm_h, lstm_c
+        #decoder_output = torch.tanh(self.fc2(torch.cat([lstm_h, video_encoded_att, word], dim=1)))  # b*h
+        
+        # sequential deepout layer
+        intput_deepout = torch.cat([lstm_h, video_encoded_att, word], dim = 1)
+        lstm_h_deepout, lstm_c_deepout = self.seqDeepout(intput_deepout, (lstm_h_deepout, lstm_c_deepout))
+        lstm_h_deepout = self.seqDeepout_drop(lstm_h_deepout)
+        
+        word_logits = self.word_restore(lstm_h_deepout)  # b*v
+        return word_logits, lstm_h, lstm_c, lstm_h_deepout, lstm_c_deepout
 
-class BiLSTM_attention_deepout(nn.Module):
+class BiLSTM_attention_seqDeepout(nn.Module):
     def __init__(self, feature_size, projected_size, hidden_size, word_size, max_frames, max_words, vocab):
-        super(BiLSTM_attention_deepout, self).__init__()
+        super(BiLSTM_attention_seqDeepout, self).__init__()
         self.encoder = BiEncoder(feature_size, projected_size, hidden_size, max_frames)
         self.decoder = Decoder(hidden_size, projected_size, hidden_size, word_size, max_words, vocab)
 
