@@ -44,9 +44,18 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
 
     result = {}
     for i, (videos, video_ids) in enumerate(eval_loader):
-        # 构造mini batch的Variable
-        videos = Variable(videos)
+
+        videos_flip = torch.zeros_like(videos)
+        for j in range(videos.size()[0]):
+            videos_flip[j] = videos[videos.size()[0] - j - 1]
+        list_video_ids_flip = list(video_ids)
+        for j in range(len(video_ids)):
+            list_video_ids_flip[j] = video_ids[len(video_ids) - j - 1]
+
+        videos = videos_flip
         videos = videos.to(DEVICE)
+        video_ids = tuple(list_video_ids_flip)
+        print('video_ids:', video_ids)
     
         outputs = net(videos, None)
         for (tokens, vid) in zip(outputs, video_ids):
@@ -55,6 +64,7 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
 
     prediction_txt = open(prediction_txt_path, 'w')
     for vid, s in result.items():
+
         prediction_txt.write('%d\t%s\n' % (vid, s))  # 注意，MSVD数据集的视频文件名从1开始
 
     prediction_txt.close()
