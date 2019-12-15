@@ -44,8 +44,8 @@ if (args.model == 'S2VT'):
                         vocab,
                         args.drop_out,
                         DEVICE)
-elif (args.model == 'BiLSTM_attention'):
-    model = models.BiLSTM_attention(args.feature_size, 
+elif (args.model == 'BiLSTM_attention_deepout'):
+    model = models.BiLSTM_attention_deepout(args.feature_size, 
                                     args.projected_size, 
                                     args.hidden_size, 
                                     args.word_size, 
@@ -195,6 +195,7 @@ for epoch in range(args.num_epochs):
     print("*******One epoch time: %.3fs*******\n" % (end_time - start_time))
 
 print('best_meteor:', best_meteor)
+print('best_cider:', best_cider)
 
 # with SummaryWriter(log_dir='./graph') as writer:
 #     writer.add_graph(model, (v, t))

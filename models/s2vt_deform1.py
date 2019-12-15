@@ -1,6 +1,7 @@
 '''
-@file s2vt.py: the implementation of S2VT model with some changes.
-Encoder and decoder does not share parameters. Encoder's output serve as the initial hidden state of decoder's RNN.
+@file s2vt_deform1.py: the implementation of S2VT model with some changes.
+Encoder and decoder does not share parameters. Encoder's output serve as 
+the initial hidden state of decoder's RNN.
 relevant paper: Sequence to Sequence -- Video to Text, ICCV 2015.
 '''
 
@@ -155,7 +156,7 @@ class Decoder(nn.Module):
             word_logits, lstm_h, lstm_c = self.decode(video_encoded, lstm_h, lstm_c, word)
 
             # store log probabilities
-            log_prob = F.log_softmax(word_logits, dim=1)  # b*v
+            log_prob = nn.function.log_softmax(word_logits, dim=1)  # b*v
             log_probs.append(log_prob)
 
             #update new state
