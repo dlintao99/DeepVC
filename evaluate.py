@@ -48,7 +48,6 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
         videos = Variable(videos)
         videos = videos.to(DEVICE)
     
-        print('videos.size()', videos.size())
         outputs = net(videos, None)
         for (tokens, vid) in zip(outputs, video_ids):
             s = decode_tokens(tokens.data, vocab)
@@ -82,7 +81,7 @@ if __name__ == '__main__':
                             args.drop_out,
                             DEVICE)
     elif (args.model == 'BiLSTM_attention_deepout'):
-        model = models.BiLSTM_attention(args.feature_size, 
+        model = models.BiLSTM_attention_deepout(args.feature_size, 
                                         args.projected_size, 
                                         args.hidden_size, 
                                         args.word_size, 
