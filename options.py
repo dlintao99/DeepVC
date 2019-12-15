@@ -42,7 +42,7 @@ parser.add_argument('--use_checkpoint', type = int, default = 0,
 
 # parameters about model
 parser.add_argument('--model', type = str, default = 'BiLSTM_attention_deepout',
-                    help = 'choose a model from {S2VT, BiLSTM_attention_deepout}')
+                    help = 'choose a model from {S2VT, BiLSTM_attention_deepout, BiLSTM_attention_seqDeepout}')
 parser.add_argument('--projected_size', type = int, default = 1000, 
                     help = '?')
 parser.add_argument('--word_size', type = int, default = 300, 
@@ -147,11 +147,13 @@ if args.path_dir_result is None:
 if not os.path.exists(args.path_dir_result):
     os.mkdir(args.path_dir_result)
 
+# path of referenced caption file
 args.val_reference_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_val_references.txt')
-args.val_prediction_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_val_predictions.txt')
-
 args.test_reference_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_test_references.txt')
-args.test_prediction_txt_path = os.path.join(args.path_dir_Dataset, args.dataset + '_test_predictions.txt')
+
+# path of predicted caption file
+args.val_prediction_txt_path = os.path.join(args.path_dir_result, args.dataset + '_val_predictions.txt')
+args.test_prediction_txt_path = os.path.join(args.path_dir_result, args.dataset + '_test_predictions.txt')
 
 # checkpoint相关的超参数
 args.resnet_checkpoint = args.path_dir_PModels + '/resnet50-19c8e357.pth'  # 直接用pytorch训练的模型

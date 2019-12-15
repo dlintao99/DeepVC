@@ -56,6 +56,14 @@ elif (args.model == 'BiLSTM_attention_deepout'):
                                     args.max_frames, 
                                     args.max_words, 
                                     vocab)
+elif (args.model == 'BiLSTM_attention_seqDeepout'):
+    model = models.BiLSTM_attention_seqDeepout(args.feature_size, 
+                                    args.projected_size, 
+                                    args.hidden_size, 
+                                    args.word_size, 
+                                    args.max_frames, 
+                                    args.max_words, 
+                                    vocab)
                                     
 print('Total parameters:', sum(param.numel() for param in model.parameters()))
 print('Total parameters:', sum(param.numel() for param in model.parameters()), file = file_logs)
