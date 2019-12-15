@@ -49,7 +49,7 @@ parser.add_argument('--word_size', type = int, default = 300,
                     help = '?')
 parser.add_argument('--hidden_size', type = int, default = 1024, 
                     help = '?')
-parser.add_argument('--beam_size', type = int, default = 5, 
+parser.add_argument('--beam_size', type = int, default = 1, 
                     help = 'width of beam search')
 parser.add_argument('--frame_shape', type = tuple, default = (3, 299, 299), 
                     help = 'size of every video frame')

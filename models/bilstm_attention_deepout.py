@@ -181,8 +181,8 @@ class Decoder(nn.Module):
         nn.init.xavier_normal_(self.fc1.weight)
         self.fc2 = nn.Linear(2 * hidden_size + word_size, hidden_size)
         nn.init.xavier_normal_(self.fc2.weight)
-        self.fc3 = nn.Linear(2 * hidden_size, hidden_size)
-        nn.init.xavier_normal_(self.fc3.weight)
+        #self.fc3 = nn.Linear(2 * hidden_size, hidden_size)
+        #nn.init.xavier_normal_(self.fc3.weight)
         self.word_restore = nn.Linear(hidden_size, self.vocab_size)
         nn.init.xavier_normal_(self.word_restore.weight)
 
@@ -324,8 +324,8 @@ class Decoder(nn.Module):
         lstm_h, lstm_c = self.lstm(decoder_input, (lstm_h, lstm_c))
         lstm_h = self.lstm_drop(lstm_h)
         # deepout layer
-        #decoder_output = torch.tanh(self.fc2(torch.cat([lstm_h, video_encoded_att, word], dim=1)))  # b*h
-        decoder_output = torch.tanh(self.fc3(torch.cat([lstm_h, video_encoded_att], dim=1)))  # b*h
+        decoder_output = torch.tanh(self.fc2(torch.cat([lstm_h, video_encoded_att, word], dim=1)))  # b*h
+        #decoder_output = torch.tanh(self.fc3(torch.cat([lstm_h, video_encoded_att], dim=1)))  # b*h
         word_logits = self.word_restore(decoder_output)  # b*v
         return word_logits, lstm_h, lstm_c
 
