@@ -135,5 +135,5 @@ dmypy.json
 *.pth
 .vscode/
 results/
-logs/
+logs_tensorboard/
 visuals/
