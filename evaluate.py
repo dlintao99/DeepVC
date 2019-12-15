@@ -48,7 +48,6 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
         videos = Variable(videos)
         videos = videos.to(DEVICE)
     
-        print('videos.size()', videos.size())
         outputs = net(videos, None)
         for (tokens, vid) in zip(outputs, video_ids):
             s = decode_tokens(tokens.data, vocab)

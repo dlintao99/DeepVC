@@ -19,8 +19,6 @@ parser.add_argument('--path_dir_feats', type = str, default = '/home/dlt/workspa
                     help = 'path of directory to save video frames\' features extracted by CNN')
 parser.add_argument('--path_dir_PModels', type = str, default = '/home/dlt/workspace/PModels', 
                     help = 'path of directory to save pretrained models')
-parser.add_argument('--path_dir_results', type = str, default = '/home/dlt/workspace/Codes/DeepVC/results', 
-                    help = 'path of directory to save training results')
 
 # dataset used to train
 parser.add_argument('--dataset', type = str, default = 'msvd', 
@@ -78,10 +76,13 @@ parser.add_argument('--optimal_metric', type = str, default = 'METEOR',
 parser.add_argument('--path_dir_result', type = str, default = None,
                     help = 'enter the path of dir to save result of current running program')
 
+# annotation
+parser.add_argument('--annotation', type = str, default = '',
+                    help = 'enter a string to add annotation on path of dir, such as "results" and "logs_tensorboard"')
+
 args = parser.parse_args()
 
 args.str_current_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-args.log_environment = os.path.join('logs', args.str_current_time)  # tensorboard的记录环境
 
 # parameters abount datasets
 ## MSVD
@@ -137,9 +138,12 @@ args.feature_h5_path = os.path.join(args.path_dir_feats, args.dataset + '_featur
 args.feature_h5_feats = 'feats'
 args.feature_h5_lens = 'lens'
 
+# path of directory to save training results
+args.path_dir_results = 'results'
+
 # 结果评估相关的参数
 if args.path_dir_result is None:
-    args.path_dir_result = args.path_dir_results + '/' + args.model + '_' + args.dataset + '_' + args.str_current_time
+    args.path_dir_result = args.path_dir_results + '/' + args.model + '_' + args.dataset + '_' + args.annotation + '_' + args.str_current_time
 if not os.path.exists(args.path_dir_result):
     os.mkdir(args.path_dir_result)
 
@@ -166,3 +170,9 @@ args.best_cider_optimizer_pth_path = os.path.join(args.path_dir_result, args.dat
 #args.visual_dir = '/visuals' + '/' + args.model + '_' + args.dataset + '_' + args.str_current_time
 #if not os.path.exists(args.visual_dir):
 #    os.mkdir(args.visual_dir)
+
+# tensorboard的记录环境
+args.path_logs_tensorboard = os.path.join('logs_tensorboard', args.model + '_' + args.dataset + '_' + args.annotation + '_' + args.str_current_time)
+
+# path of logs.txt
+args.path_logs = args.path_dir_result + '/logs.txt'
