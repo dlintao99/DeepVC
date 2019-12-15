@@ -101,8 +101,6 @@ saving_schedule = [int(x * total_step) for x in [0.25, 0.5, 0.75, 1.0]]
 
 print('total: ', total_step)
 print('saving_schedule: ', saving_schedule, file = file_logs)
-print('total: ', total_step)
-print('saving_schedule: ', saving_schedule, file = file_logs)
 
 start_time_train = time.time()
 
@@ -233,7 +231,7 @@ for epoch in range(args.num_epochs):
 
 print('best_meteor:', best_meteor)
 print('best_cider:', best_cider)
-print('used hours: %.4fs', (time.time() - start_time_train) / 3600)
+print('used hours: %.4fs' % ((time.time() - start_time_train) / 3600))
 print('best_meteor:', best_meteor, file = file_logs)
 print('best_cider:', best_cider, file = file_logs)
 
