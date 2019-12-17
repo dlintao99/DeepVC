@@ -43,6 +43,15 @@ model = models.build_model(args, vocab, DEVICE)
 print('Total parameters:', sum(param.numel() for param in model.parameters()))
 print('Total parameters:', sum(param.numel() for param in model.parameters()), file = file_logs)
 
+print('model:', args.model)
+print('model:', args.model, file = file_logs)
+print('dataset:', args.dataset)
+print('dataset:', args.dataset, file = file_logs)
+print('beam size:', args.beam_size)
+print('beam size:', args.beam_size, file = file_logs)
+print('batch size:', args.batch_size)
+print('batch size:', args.batch_size, file = file_logs)
+
 ## initialize loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)

@@ -55,7 +55,6 @@ def evaluate(vocab, net, eval_range, prediction_txt_path, reference):
         videos = videos_flip
         videos = videos.to(DEVICE)
         video_ids = tuple(list_video_ids_flip)
-        print('video_ids:', video_ids)
     
         outputs = net(videos, None)
         for (tokens, vid) in zip(outputs, video_ids):
